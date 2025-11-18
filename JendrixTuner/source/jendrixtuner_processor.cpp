@@ -70,11 +70,24 @@ tresult PLUGIN_API JendrixTunerProcessor::setActive(TBool state)
 {
     if (state) // Plugin activated
     {
-        // Initialize DSP here (e.g., clear buffers, reset state)
+        // Initialize pitch detection
+        mAudioBuffer.resize(kPitchBufferSize);
+        mAudioBuffer.clear();
+
+        mPitchDetector.initialize(kPitchBufferSize, mSampleRate);
+        mPitchDetector.setThreshold(0.15); // Good balance for vocals
+
+        // Reset detection state
+        mSamplesSinceLastDetection = 0;
+        mDetectedPitch = 0.0;
+        mDetectedMidiNote = 0.0;
+        mIsPitchValid = false;
+        mPitchConfidence = 0.0;
     }
     else // Plugin deactivated
     {
         // Clean up DSP resources
+        mAudioBuffer.clear();
     }
     return AudioEffect::setActive(state);
 }
@@ -189,20 +202,62 @@ tresult PLUGIN_API JendrixTunerProcessor::process(Vst::ProcessData& data)
     }
     else
     {
-        // Process each channel
-        for (int32 channel = 0; channel < numChannels; channel++)
+        // Get mono signal for pitch detection (use left channel or average)
+        float* monoInput = inputBus.channelBuffers32[0];
+
+        // Process sample by sample
+        for (int32 sample = 0; sample < numSamples; sample++)
         {
-            float* inputChannel = inputBus.channelBuffers32[channel];
-            float* outputChannel = outputBus.channelBuffers32[channel];
+            float monoSample = monoInput[sample];
 
-            // For now: just pass through
-            // TODO: Add pitch detection and correction here
-            for (int32 sample = 0; sample < numSamples; sample++)
+            // If stereo, average both channels for pitch detection
+            if (numChannels > 1)
             {
-                float inputSample = inputChannel[sample];
+                monoSample = (monoInput[sample] + inputBus.channelBuffers32[1][sample]) * 0.5f;
+            }
 
-                // *** PITCH CORRECTION WILL GO HERE ***
-                float correctedSample = inputSample; // Placeholder
+            //--- Feed sample to circular buffer for pitch detection ---
+            mAudioBuffer.write(monoSample);
+            mSamplesSinceLastDetection++;
+
+            // Run pitch detection periodically (every kPitchDetectionHopSize samples)
+            if (mSamplesSinceLastDetection >= kPitchDetectionHopSize)
+            {
+                mSamplesSinceLastDetection = 0;
+
+                // Get buffered audio in chronological order
+                std::vector<float> pitchBuffer(kPitchBufferSize);
+                mAudioBuffer.getOrdered(pitchBuffer.data(), kPitchBufferSize);
+
+                // Run YIN pitch detection
+                mDetectedPitch = mPitchDetector.detectPitch(pitchBuffer.data(), kPitchBufferSize);
+                mIsPitchValid = mPitchDetector.isPitchDetected();
+                mPitchConfidence = mPitchDetector.getConfidence();
+
+                if (mIsPitchValid)
+                {
+                    mDetectedMidiNote = mPitchDetector.getMidiNote();
+
+                    // Debug: You can uncomment this to see pitch in your DAW's console
+                    // FDebugPrint("Detected: %s (%.1f Hz, MIDI %.1f, Conf: %.2f)\n",
+                    //            mPitchDetector.getNoteName(),
+                    //            mDetectedPitch,
+                    //            mDetectedMidiNote,
+                    //            mPitchConfidence);
+                }
+            }
+
+            //--- For now: just pass through (pitch correction coming in Phase 4) ---
+            // *** PITCH SHIFTING WILL GO HERE IN PHASE 4 ***
+
+            // Copy input to all output channels
+            for (int32 channel = 0; channel < numChannels; channel++)
+            {
+                float* inputChannel = inputBus.channelBuffers32[channel];
+                float* outputChannel = outputBus.channelBuffers32[channel];
+
+                float inputSample = inputChannel[sample];
+                float correctedSample = inputSample; // No correction yet
 
                 // Apply wet/dry mix
                 float outputSample = inputSample * (1.0f - (float)mMix) +
@@ -210,6 +265,34 @@ tresult PLUGIN_API JendrixTunerProcessor::process(Vst::ProcessData& data)
 
                 outputChannel[sample] = outputSample;
             }
+        }
+    }
+
+    //--- 3. Send output parameter changes (pitch visualization) ---
+    if (data.outputParameterChanges && mIsPitchValid)
+    {
+        int32 index = 0;
+
+        // Send detected pitch (Hz)
+        Vst::IParamValueQueue* pitchQueue =
+            data.outputParameterChanges->addParameterData(kParamDetectedPitch, index);
+        if (pitchQueue)
+        {
+            // Normalize: assume pitch range 60-1000 Hz for display
+            double normalizedPitch = (mDetectedPitch - 60.0) / (1000.0 - 60.0);
+            normalizedPitch = std::max(0.0, std::min(1.0, normalizedPitch));
+            pitchQueue->addPoint(0, normalizedPitch, index);
+        }
+
+        // Send detected MIDI note
+        Vst::IParamValueQueue* noteQueue =
+            data.outputParameterChanges->addParameterData(kParamDetectedNote, index);
+        if (noteQueue)
+        {
+            // Normalize: MIDI note 0-127
+            double normalizedNote = mDetectedMidiNote / 127.0;
+            normalizedNote = std::max(0.0, std::min(1.0, normalizedNote));
+            noteQueue->addPoint(0, normalizedNote, index);
         }
     }
 

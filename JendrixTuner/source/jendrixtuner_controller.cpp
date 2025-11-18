@@ -111,6 +111,24 @@ tresult PLUGIN_API JendrixTunerController::initialize(FUnknown* context)
                            Vst::ParameterInfo::kCanAutomate,
                            kParamFormantPreserve);
 
+    //--- Output Parameters (Read-only, for visualization) ---
+
+    // DETECTED PITCH - Shows detected frequency in Hz
+    parameters.addParameter(STR16("Detected Pitch"),
+                           STR16("Hz"),
+                           0,     // continuous
+                           0.0,   // default 0
+                           Vst::ParameterInfo::kIsReadOnly,
+                           kParamDetectedPitch);
+
+    // DETECTED NOTE - Shows detected MIDI note number
+    parameters.addParameter(STR16("Detected Note"),
+                           STR16(""),
+                           0,     // continuous
+                           0.0,   // default 0
+                           Vst::ParameterInfo::kIsReadOnly,
+                           kParamDetectedNote);
+
     return result;
 }
 

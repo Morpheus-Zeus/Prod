@@ -10,6 +10,8 @@
 #pragma once
 
 #include "public.sdk/source/vst/vstaudioeffect.h"
+#include "../include/yin_pitch_detector.h"
+#include "../include/circular_buffer.h"
 
 namespace Steinberg {
 namespace JendrixTuner {
@@ -57,6 +59,21 @@ protected:
     bool mFormantPreserve = false;
 
     double mSampleRate = 44100.0;    // Current sample rate
+
+    //--- Pitch Detection -------------------------------------------------
+    YinPitchDetector mPitchDetector;       // YIN pitch detection
+    CircularBuffer<float> mAudioBuffer;    // Circular buffer for windowing
+
+    // Pitch detection configuration
+    static constexpr size_t kPitchBufferSize = 2048;  // ~46ms @ 44.1kHz (good for 60-1000Hz)
+    static constexpr int kPitchDetectionHopSize = 512; // Run detection every 512 samples (~11ms)
+    int mSamplesSinceLastDetection = 0;
+
+    // Detected pitch info
+    double mDetectedPitch = 0.0;           // Detected frequency in Hz
+    double mDetectedMidiNote = 0.0;        // Detected note as MIDI number
+    bool mIsPitchValid = false;            // Is current detection valid?
+    double mPitchConfidence = 0.0;         // Detection confidence (0-1)
 };
 
 //------------------------------------------------------------------------

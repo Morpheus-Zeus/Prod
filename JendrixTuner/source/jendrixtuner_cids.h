@@ -31,13 +31,18 @@ static const FUID kJendrixTunerControllerUID(0xB2C3D4E5, 0xF6A74890, 0xBCDEF012,
 //------------------------------------------------------------------------
 enum JendrixTunerParams : Vst::ParamID
 {
+    // Input parameters (controlled by user)
     kParamBypass = 0,           // Bypass on/off
     kParamKey = 1,              // Musical key (0-11 = C to B)
     kParamScale = 2,            // Scale type (0=Major, 1=Minor, etc.)
     kParamRetuneSpeed = 3,      // How fast to correct (0=instant/robotic, 1=slow/natural)
     kParamHumanize = 4,         // Amount of pitch variation to preserve
     kParamMix = 5,              // Wet/Dry mix (0=dry, 1=100% wet)
-    kParamFormantPreserve = 6   // Formant preservation on/off
+    kParamFormantPreserve = 6,  // Formant preservation on/off
+
+    // Output parameters (read-only, for visualization)
+    kParamDetectedPitch = 100,  // Detected pitch in Hz (output only)
+    kParamDetectedNote = 101    // Detected MIDI note (output only)
 };
 
 //------------------------------------------------------------------------

@@ -38,10 +38,16 @@ set(PLUGIN_SOURCES
     source/entry.cpp
 )
 
+# DSP Algorithm Headers (header-only)
+set(PLUGIN_HEADERS
+    include/yin_pitch_detector.h
+    include/circular_buffer.h
+)
+
 #-------------------------------------------------------------------------------
 # Create the VST3 plugin target
 #-------------------------------------------------------------------------------
-smtg_add_vst3plugin(JendrixTuner ${PLUGIN_SOURCES})
+smtg_add_vst3plugin(JendrixTuner ${PLUGIN_SOURCES} ${PLUGIN_HEADERS})
 
 #-------------------------------------------------------------------------------
 # Set plugin properties
@@ -49,6 +55,12 @@ smtg_add_vst3plugin(JendrixTuner ${PLUGIN_SOURCES})
 smtg_target_set_plugin_name(JendrixTuner "JendrixTuner")
 
 target_compile_features(JendrixTuner PUBLIC cxx_std_17)
+
+# Add include directory for our DSP headers
+target_include_directories(JendrixTuner
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
 target_link_libraries(JendrixTuner
     PRIVATE

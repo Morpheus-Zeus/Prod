@@ -19,8 +19,14 @@ A real-time vocal pitch correction plugin for Windows, built with the Steinberg 
 - All parameters defined and automatable
 - State saving/loading works
 
+✅ **Phase 2 Complete**: YIN pitch detection
+- Real-time monophonic pitch detection
+- 60-1000 Hz range (covers vocals)
+- ~46ms latency @ 44.1kHz
+- Output parameters show detected pitch/note
+- See `PHASE2_PITCH_DETECTION.md` for details
+
 🚧 **Next Phases**:
-- Phase 2: YIN pitch detection
 - Phase 3: Note quantization to scale
 - Phase 4: Pitch shifting algorithm
 - Phase 5: Retune speed & humanization
