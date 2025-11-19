@@ -42,6 +42,7 @@ set(PLUGIN_SOURCES
 set(PLUGIN_HEADERS
     include/yin_pitch_detector.h
     include/circular_buffer.h
+    include/scale_quantizer.h
 )
 
 #-------------------------------------------------------------------------------

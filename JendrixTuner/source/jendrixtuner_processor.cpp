@@ -77,12 +77,21 @@ tresult PLUGIN_API JendrixTunerProcessor::setActive(TBool state)
         mPitchDetector.initialize(kPitchBufferSize, mSampleRate);
         mPitchDetector.setThreshold(0.15); // Good balance for vocals
 
+        // Initialize scale quantizer
+        mScaleQuantizer.setRootNote(mKey);
+        mScaleQuantizer.setScaleType(static_cast<ScaleQuantizer::ScaleType>(mScale));
+
         // Reset detection state
         mSamplesSinceLastDetection = 0;
         mDetectedPitch = 0.0;
         mDetectedMidiNote = 0.0;
         mIsPitchValid = false;
         mPitchConfidence = 0.0;
+
+        // Reset quantization state
+        mTargetPitch = 0.0;
+        mTargetMidiNote = 0.0;
+        mCentsCorrection = 0.0;
     }
     else // Plugin deactivated
     {
@@ -146,9 +155,11 @@ tresult PLUGIN_API JendrixTunerProcessor::process(Vst::ProcessData& data)
                             break;
                         case kParamKey:
                             mKey = (int32)(value * 11.0); // 0-11
+                            mScaleQuantizer.setRootNote(mKey);
                             break;
                         case kParamScale:
                             mScale = (int32)(value * 1.0); // 0=Major, 1=Minor
+                            mScaleQuantizer.setScaleType(static_cast<ScaleQuantizer::ScaleType>(mScale));
                             break;
                         case kParamRetuneSpeed:
                             mRetuneSpeed = value;
@@ -238,12 +249,29 @@ tresult PLUGIN_API JendrixTunerProcessor::process(Vst::ProcessData& data)
                 {
                     mDetectedMidiNote = mPitchDetector.getMidiNote();
 
-                    // Debug: You can uncomment this to see pitch in your DAW's console
-                    // FDebugPrint("Detected: %s (%.1f Hz, MIDI %.1f, Conf: %.2f)\n",
-                    //            mPitchDetector.getNoteName(),
+                    //--- Quantize to scale (Phase 3) ---
+                    // Map detected pitch to nearest in-scale note
+                    mTargetMidiNote = mScaleQuantizer.quantizeNote(mDetectedMidiNote);
+                    mTargetPitch = mScaleQuantizer.quantizeFrequency(mDetectedPitch);
+
+                    // Calculate how many cents correction is needed
+                    mCentsCorrection = mScaleQuantizer.calculateCentsCorrection(
+                        mDetectedMidiNote, mTargetMidiNote);
+
+                    // Debug: You can uncomment this to see quantization in your DAW's console
+                    // FDebugPrint("Detected: %.1f Hz (MIDI %.1f) → Target: %.1f Hz (MIDI %.0f) [%+.0f cents]\n",
                     //            mDetectedPitch,
                     //            mDetectedMidiNote,
-                    //            mPitchConfidence);
+                    //            mTargetPitch,
+                    //            mTargetMidiNote,
+                    //            mCentsCorrection);
+                }
+                else
+                {
+                    // No pitch detected - reset targets
+                    mTargetPitch = 0.0;
+                    mTargetMidiNote = 0.0;
+                    mCentsCorrection = 0.0;
                 }
             }
 
@@ -293,6 +321,39 @@ tresult PLUGIN_API JendrixTunerProcessor::process(Vst::ProcessData& data)
             double normalizedNote = mDetectedMidiNote / 127.0;
             normalizedNote = std::max(0.0, std::min(1.0, normalizedNote));
             noteQueue->addPoint(0, normalizedNote, index);
+        }
+
+        // Send target pitch (Hz) after quantization
+        Vst::IParamValueQueue* targetPitchQueue =
+            data.outputParameterChanges->addParameterData(kParamTargetPitch, index);
+        if (targetPitchQueue)
+        {
+            // Normalize: assume pitch range 60-1000 Hz for display
+            double normalizedTargetPitch = (mTargetPitch - 60.0) / (1000.0 - 60.0);
+            normalizedTargetPitch = std::max(0.0, std::min(1.0, normalizedTargetPitch));
+            targetPitchQueue->addPoint(0, normalizedTargetPitch, index);
+        }
+
+        // Send target MIDI note after quantization
+        Vst::IParamValueQueue* targetNoteQueue =
+            data.outputParameterChanges->addParameterData(kParamTargetNote, index);
+        if (targetNoteQueue)
+        {
+            // Normalize: MIDI note 0-127
+            double normalizedTargetNote = mTargetMidiNote / 127.0;
+            normalizedTargetNote = std::max(0.0, std::min(1.0, normalizedTargetNote));
+            targetNoteQueue->addPoint(0, normalizedTargetNote, index);
+        }
+
+        // Send cents correction (-50 to +50 cents typically)
+        Vst::IParamValueQueue* centsQueue =
+            data.outputParameterChanges->addParameterData(kParamCentsCorrection, index);
+        if (centsQueue)
+        {
+            // Normalize: -50 cents = 0.0, 0 cents = 0.5, +50 cents = 1.0
+            double normalizedCents = (mCentsCorrection + 50.0) / 100.0;
+            normalizedCents = std::max(0.0, std::min(1.0, normalizedCents));
+            centsQueue->addPoint(0, normalizedCents, index);
         }
     }
 

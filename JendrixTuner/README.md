@@ -26,8 +26,15 @@ A real-time vocal pitch correction plugin for Windows, built with the Steinberg 
 - Output parameters show detected pitch/note
 - See `PHASE2_PITCH_DETECTION.md` for details
 
+✅ **Phase 3 Complete**: Scale quantization
+- Maps detected pitch to nearest in-scale note
+- Supports Major, Minor, Chromatic scales
+- All 12 root keys (C-B)
+- Calculates cents correction needed
+- Output parameters show target pitch and correction
+- See `PHASE3_SCALE_QUANTIZATION.md` for details
+
 🚧 **Next Phases**:
-- Phase 3: Note quantization to scale
 - Phase 4: Pitch shifting algorithm
 - Phase 5: Retune speed & humanization
 

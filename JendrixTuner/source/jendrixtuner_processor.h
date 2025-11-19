@@ -12,6 +12,7 @@
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "../include/yin_pitch_detector.h"
 #include "../include/circular_buffer.h"
+#include "../include/scale_quantizer.h"
 
 namespace Steinberg {
 namespace JendrixTuner {
@@ -74,6 +75,14 @@ protected:
     double mDetectedMidiNote = 0.0;        // Detected note as MIDI number
     bool mIsPitchValid = false;            // Is current detection valid?
     double mPitchConfidence = 0.0;         // Detection confidence (0-1)
+
+    //--- Scale Quantization ----------------------------------------------
+    ScaleQuantizer mScaleQuantizer;        // Quantizes pitch to musical scale
+
+    // Target pitch info (after quantization)
+    double mTargetPitch = 0.0;             // Target frequency in Hz
+    double mTargetMidiNote = 0.0;          // Target note as MIDI number
+    double mCentsCorrection = 0.0;         // Correction needed in cents (-50 to +50)
 };
 
 //------------------------------------------------------------------------

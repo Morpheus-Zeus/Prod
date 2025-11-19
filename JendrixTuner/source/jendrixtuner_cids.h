@@ -42,7 +42,10 @@ enum JendrixTunerParams : Vst::ParamID
 
     // Output parameters (read-only, for visualization)
     kParamDetectedPitch = 100,  // Detected pitch in Hz (output only)
-    kParamDetectedNote = 101    // Detected MIDI note (output only)
+    kParamDetectedNote = 101,   // Detected MIDI note (output only)
+    kParamTargetPitch = 102,    // Target pitch in Hz after quantization (output only)
+    kParamTargetNote = 103,     // Target MIDI note after quantization (output only)
+    kParamCentsCorrection = 104 // Pitch correction needed in cents (output only)
 };
 
 //------------------------------------------------------------------------

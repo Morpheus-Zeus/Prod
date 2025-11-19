@@ -129,6 +129,30 @@ tresult PLUGIN_API JendrixTunerController::initialize(FUnknown* context)
                            Vst::ParameterInfo::kIsReadOnly,
                            kParamDetectedNote);
 
+    // TARGET PITCH - Shows quantized target frequency in Hz
+    parameters.addParameter(STR16("Target Pitch"),
+                           STR16("Hz"),
+                           0,     // continuous
+                           0.0,   // default 0
+                           Vst::ParameterInfo::kIsReadOnly,
+                           kParamTargetPitch);
+
+    // TARGET NOTE - Shows quantized target MIDI note
+    parameters.addParameter(STR16("Target Note"),
+                           STR16(""),
+                           0,     // continuous
+                           0.0,   // default 0
+                           Vst::ParameterInfo::kIsReadOnly,
+                           kParamTargetNote);
+
+    // CENTS CORRECTION - Shows pitch correction needed in cents
+    parameters.addParameter(STR16("Cents Correction"),
+                           STR16("cents"),
+                           0,     // continuous
+                           0.5,   // default 0.5 (represents 0 cents)
+                           Vst::ParameterInfo::kIsReadOnly,
+                           kParamCentsCorrection);
+
     return result;
 }
 
